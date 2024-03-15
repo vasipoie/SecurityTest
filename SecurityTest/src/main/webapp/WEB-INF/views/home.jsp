@@ -1,14 +1,26 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ page session="false" %>
+<%@ taglib uri="http://www.springframework.org/security/tags" prefix="sec" %>
 <html>
 <head>
 	<title>Home</title>
 </head>
 <body>
-<h1>
-	Hello world!  
-</h1>
-
+<h1>Hello world!</h1>
 <P>  The time on the server is ${serverTime}. </P>
+
+<hr/>
+<!-- 로그인을 하지 않은 경우 : 익명의 사용자의 경우 -->
+<sec:authorize access="isAnonymous()">
+	<a href="/login">로그인</a>
+</sec:authorize>
+
+<!-- 로그인 후 인증된 사용자의 경우 -->
+<sec:authorize access="isAuthenticated()">
+	<a href="/logout">로그아웃</a>
+</sec:authorize>
+
+<a href="/board/list">Board List</a><br/>
+<a href="/notice/list">Notice List</a><br/>
 </body>
 </html>

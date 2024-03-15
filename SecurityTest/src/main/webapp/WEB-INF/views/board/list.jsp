@@ -7,5 +7,10 @@
 </head>
 <body>
 	<h3>BOARD LIST : access to all</h3>
+	<hr/>
+	
+	<a href="/board/register">Register</a>
+	<br/>
+	<a href="/">HOME</a>
 </body>
 </html>

@@ -7,5 +7,10 @@
 </head>
 <body>
 	<h3>NOTICE LIST : access to all</h3>
+	<hr/>
+	
+	<a href="/notice/register">Register</a>
+	<br/>
+	<a href="/">HOME</a>
 </body>
 </html>

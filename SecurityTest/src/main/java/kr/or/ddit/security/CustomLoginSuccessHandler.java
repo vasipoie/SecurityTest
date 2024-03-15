@@ -40,7 +40,14 @@ public class CustomLoginSuccessHandler implements AuthenticationSuccessHandler{
 		clearAuthenticationAttribute(request);
 		
 		SavedRequest savedRequest = requestCache.getRequest(request, response);
-		String targetUrl = savedRequest.getRedirectUrl();
+		
+		String targetUrl = "/";
+		
+		if(savedRequest != null) { //타겟 정보가 존재함
+			
+			targetUrl = savedRequest.getRedirectUrl();
+			
+		}
 		
 		log.info("타겟url Login Success targetUrl : " + targetUrl);
 		

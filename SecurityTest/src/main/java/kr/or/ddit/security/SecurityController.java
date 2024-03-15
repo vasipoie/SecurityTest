@@ -272,26 +272,179 @@ public class SecurityController {
 	 *  		
 	 *  		** logout 경로는 스프링에서 제공하는 /logout 경로를 설정한다. (default)
 	 *  			
+	 *  10. JDBC 이용한 인증/인가 처리
+	 *  - 지정한 형식으로 테이블을 생성하면 JDBC를 이용해서 인증/인가를 처리할 수 있다.
+	 *  - 생성할 테이블은 사용자를 관리하는 테이블(user)과 권한을 관리하는 테이블이다.
 	 *  
+	 *  	# 데이터베이스 테이블 준비
 	 *  
+	 *  		- users, authorities 테이블 준비
 	 *  
+	 *  	# 환경 설정
 	 *  
+	 *  		- 의존 라이브러리 설정
+	 *  			> 데이터베이스 관련 라이브러리를 추가한다.
+	 *  			> 기존 데이터베이스 연결을 위한 라이브러리가 추가되어 있다. (Spring2Project 내)
+	 *  
+	 *  	# 스프링 설정(root-context.xml 설정)
+	 *  		
+	 *  		- 데이터 소스 설정(기존 설정대로)
+	 *  
+	 *  	# 스프링 시큐리티 설정(security-context.xml 설정)
+	 *  
+	 *  		- customPasswordEncoder 빈 등록 진행
+	 *  			> <security:authentication-manager> 태그 설정
+	 *  
+	 *  	# 비밀번호 암호화 처리기 클래스 정의
+	 *  
+	 *  		- 비밀번호 암호화 처리기
+	 *  			> 스프링 시큐리티 5부터는 기본적으로 PasswordEncoder를 지정해야 하는데,
+	 *  			제대로 하려면 생성된 사용자 테이블(users)에 비밀번호를 암호화하여 저장해야 한다.
+	 *  			테스트를 위해서 생성한 데이터는 암호화를 처리하지 않고 로그인하면 당연히 로그인 에러가 발생한다.
+	 *  			(암호화된 비밀번호는 날라가는게 아니라서)
+	 *  			그래서 암호화를 하지않는 PasswordEncoder를 직접 구현하여 지정하면
+	 *  			로그인 시 암호화를 고려하지 않으므로 로그인이 정상적으로 이루어지는걸 확인할 수 있습니다.
+	 * 			- security.CustomNoOpPasswordEncoder 클래스 구현
+	 *  
+	 *  11. 사용자 테이블 이용한 인증/인가 처리
+	 *  - 스프링 시큐리티가 기본적으로 이용하는 테이블 구조를 그대로 생성해서 사용해도 되지만
+	 *  기존에 구축된 회원 테이블이 있다면 약간의 작업으로 기존 테이블을 활용할 수 있다.
+	 *  
+	 *  	# 데이터베이스 테이블 준비
+	 *  
+	 *  		- member, member_auth 테이블 준비
+	 *  
+	 *  	# 환경 설정
+	 *  	
+	 *  		- 스프링 시큐리티 설정(security-context.xml 설정)
+	 *  			> bcryptPasswordEncoder 빈 등록 진행
+	 *  			> <security:jdbc-user-service> 태그 설정
+	 *  			> <security:password-encoder> 태그 설정
+	 *  
+	 *  	# 쿼리 정의
+	 *  		- 인증할 때 필요한 쿼리
+	 *  		> select user_id, user_pw, enabled from member where user_id = ?
+	 *  
+	 *  		- 권한을 확인할 때 필요한 쿼리
+	 *  		> select m.user_id, ma.auth 
+	 *  		  from member_auth ma, member m
+	 *  		  where ma.user_no = m.user_no
+	 *  		  and m.user_id = ?
+	 *  
+	 *  		** BCryptPasswordEncoder 클래스를 이용하여 직접 encode된 비밀번호를 찾아
+	 *  			데이터베이스에 셋팅한다.
+	 *  
+	 *  		- BCryptPasswordEncoder 클래스를 활용한 단방향 비밀번호 암호화
+	 *  		> encode() 메서드를 통해서 SHA-2 방식의 8바이트 hash 암호화를 매번 랜덤하게 생성합니다.
+	 *  		> 똑같은 비밀번호를 입력하더라도 암호화되는 문자열은 매번 다른 문자열을 반환한다.
+	 *  
+	 *  		비밀번호를 입력하면 암호화된 비밀번호로 인코딩되는데, 암호화된 비밀번호와 데이터베이스 내
+	 *  		존재하는 테이블에 있는 암호화된 비밀번호가 일치한지를 파악 후 일치하면 로그인 성공으로
+	 *  		다음 스텝을 진행합니다.
+	 *  		> BCryptPasswordEncoder 클래스의 encode() 메서드를 통해 만들어지는 암호화된
+	 *  		해쉬 다이제스트들은 입력한 비밀번호 문자에 해당하는 수십억개의 다이제스트들 중에서 일치하는
+	 *  		다이제스트가 존재할 경우 비밀번호의 일치로 보고 인증을 성공시켜줍니다.
+	 *  
+	 *  12. UserDetailsService 재정의
+	 *  - 스프링 시큐리티의 UserDetailsService를 구현하여 사용자 상세 정보를 얻어오는 메서드를 재정의한다.
+	 *  
+	 *  	# 데이터베이스 테이블
+	 *  
+	 *  		- 기존 테이블 사용
+	 *  
+	 *  	# 환경 설정
+	 *  		
+	 *  		- 의존 라이브러리 설정(pom.xml 설정)
+	 *  		> 기존 설정되어 있는 라이브러리 설정
+	 *  
+	 *  		- 스프링 시큐리티 설정(security-context.xml 설정)
+	 *  		> customUserDetailsService 빈 등록
+	 *  		> security:authentication-provider 태그 설정
+	 *  
+	 *  	# 클래스 재정의
+	 *  		- UserDetailsService 재정의
+	 *  		> security.CustomUserDetailsService
+	 *  		> 기존 사용중인 read를 기반으로 한 readById 재정의
+	 *  		> CustomUserDetailsService 클래스 내 loadUserByUsername 메소드에서
+	 *  		인코딩된 비밀번호 확인 후 데이터베이스 비밀번호 수정
+	 *  			> Member 테이블 비밀번호 수정(11번에서 비밀번호는 수정하고 옴)
+	 *  
+	 *  13. 스프링 시큐리티 표현식
+	 *  - 스프링 시큐리티 표현식을 이용하면 인증 및 권한 정보에 따라 화면을 동적으로 구성할 수 있고
+	 *  	로그인 한 사용자 정보를 보여줄 수도 있다.
+	 *  
+	 *  	# 공통 표현식
+	 *  	
+	 *  		- hasRole([role])
+	 *  			> 해당 롤이 있으면 true
+	 *  		- hasAnyRole([role, role2])
+	 *  			> 여러 롤들 중에서 하나라도 해당하는 롤이 있으면 true
+	 *  		- principal
+	 *  			> 인증된 사용자의 사용자 정보(UserDetails 인터페이스를 구현한 클래스의 객체)를 의미
+	 *  		- authentication
+	 *  			> 인증된 사용자의 인증 정보(Authentication 인터페이스를 구현한 클래스 객체)를 의미
+	 *  		- permitAll
+	 *  			> 모든 사용자에게 허용
+	 *  		- denyAll
+	 *  			> 모든 사용자에게 거부
+	 *  		- isAnonymous()
+	 *  			> 익명의 사용자의 경우(로그인을 하지 않은 경우도 해당)
+	 *  		- isAuthenticated()
+	 *  			> 인증된 사용자면 true
+	 *  		- isFullyAuthenticated()
+	 *  			> Remember-me로 인증된 것이 아닌 일반적인 방법으로 인증된 사용자인 경우 true
+	 *  
+	 *  	# 표현식 사용
+	 *  	
+	 *  		- 표현식을 이용하여 동적 화면 구성
+	 *  			> home.jsp 수정
+	 *  				- 표현식을 이용한 내용 추가
+	 *  
+	 *  		- 로그인한 사용자 정보 보여주기
+	 *  			> board/register.jsp 수정
+	 *  			> notice/register.jsp 수정
+	 *  
+	 *  14. 자동 로그인
+	 *  - 로그인하면 특정 시간 동안 다시 로그인 할 필요가 없는 기능입니다.
+	 *  - 스프링 시큐리티는 메모리나 데이터베이스를 사용하여 처리합니다.
+	 *  - 기능을 구현하기 위해 <security:remember-me> 태그를 이용하여 시큐리티 설정 파일을 수정합니다.
+	 *  
+	 *  	# 데이터베이스 테이블
+	 *  
+	 *  		- persistent_logins 테이블 준비
+	 *  
+	 *  	# 환경 설정
+	 *  
+	 *  		- 스프링 시큐리티 설정(security-context.xml)
+	 *  			> <security:remember-me data-source-ref="dataSource"
+	 *  				token-validity-seconds="604800"/> 태그 설정
+	 *  			> <security:logout logout-url="/logout" invalidate-session="true"
+	 *  				delete-cookies="remember-me. JESSION_ID" /> 태그 설정
+	 *  
+	 *  	# 자동 로그인
+	 *  
+	 *  		- 로그인 상태 유지 체크박스 추가
+	 *  			> loginForm.jsp 수정
+	 *  
+	 *  	# 자동 로그인 시, 만들어지는 쿠키 정보들
+	 *  
+	 *  		- JSESSIONID와 remember-me 쿠키가 만들어진다.
+	 *  		- JSESSIONID를 삭제 후, 다시 로그인을 진행하더라도 로그인 후 진행될 페이지가 정상적으로
+	 *  			나타나는걸 확인할 수 있다.
+	 *  			> 자동 로그인이 remember-me에 의해 실행됨을 확인할 수 있다.
+	 *  
+	 *  15. 스프링 시큐리티 어노테이션
+	 *  - 스프링 시큐리티 어노테이션을 사용하여 필요한 설정을 추가할 수 있다.
+	 *  
+	 *  	# 사용 어노테이션
+	 *  
+	 *  		- @Secured
+	 *  			> 스프링 시큐리티 모듈을 지원하기 위한 어노테이션으로 초기부터 사용되었다.
+	 *  		- @PreAuthorize
+	 *  			> 메서드가 실행되기 전에 적용할 접근 정책을 지정할 때 사용한다.
+	 *  		- @PostAuthorize
+	 *  			> 메서드가 실행한 후에 적용할 접근 정책을 지정할 때 사용한다.
 	 *  
 	 */
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
